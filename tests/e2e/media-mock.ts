@@ -39,11 +39,14 @@ export async function installMediaMock(page: Page, options: { denyFirst?: boolea
       }
       stop() {
         if (this.state === 'inactive') return
-        this.dispatchEvent(
-          new BlobEvent('dataavailable', {
-            data: new Blob(['temporary test video'], { type: this.mimeType }),
-          }),
-        )
+        // Playwright's Linux WebKit build does not expose BlobEvent even though
+        // iOS Safari does. A plain Event with the same data property exercises
+        // our MediaRecorder integration without depending on that constructor.
+        const dataEvent = new Event('dataavailable') as BlobEvent
+        Object.defineProperty(dataEvent, 'data', {
+          value: new Blob(['temporary test video'], { type: this.mimeType }),
+        })
+        this.dispatchEvent(dataEvent)
         this.state = 'inactive'
         this.dispatchEvent(new Event('stop'))
       }

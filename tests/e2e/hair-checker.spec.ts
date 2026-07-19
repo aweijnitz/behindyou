@@ -42,13 +42,12 @@ test('starting a new take destroys the previous one and reacquires the camera', 
   expect(await page.evaluate(() => window.__hairCheckerTest.requests)).toBe(2)
 })
 
-test('cleans up transient media when the app is hidden', async ({ page }) => {
+test('cleans up transient media when the page is closed or backgrounded', async ({ page }) => {
   await page.goto('/')
   await page.getByTestId('accept-privacy').click()
   await page.getByTestId('record-button').click()
   await page.evaluate(() => {
-    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
-    document.dispatchEvent(new Event('visibilitychange'))
+    window.dispatchEvent(new PageTransitionEvent('pagehide'))
   })
   await expect(page.getByTestId('resume-camera')).toBeVisible()
   expect(await page.evaluate(() => window.__hairCheckerTest.stoppedTracks)).toBeGreaterThan(0)
