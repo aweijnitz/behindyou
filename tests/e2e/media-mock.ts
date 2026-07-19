@@ -2,11 +2,16 @@ import type { Page } from '@playwright/test'
 
 export async function installMediaMock(page: Page, options: { denyFirst?: boolean } = {}) {
   await page.addInitScript(({ denyFirst }) => {
-    const testState = { requests: 0, stoppedTracks: 0, recordings: 0, denyNext: !!denyFirst }
-    Object.defineProperty(window, '__hairCheckerTest', { value: testState, configurable: true })
+    const testState = {
+      requests: 0,
+      stoppedTracks: 0,
+      recordings: 0,
+      denyNext: !!denyFirst,
+      unavailableFacing: null as 'user' | 'environment' | null,
+      facings: [] as Array<'user' | 'environment'>,
+    }
+    Object.defineProperty(window, '__behindYouTest', { value: testState, configurable: true })
 
-    const track = { stop: () => testState.stoppedTracks++ }
-    const stream = { getTracks: () => [track] }
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: {
@@ -14,11 +19,35 @@ export async function installMediaMock(page: Page, options: { denyFirst?: boolea
           testState.requests++
           if ((constraints as { audio?: boolean }).audio !== false)
             throw new Error('Audio must be disabled')
+          const facingConstraint = (constraints.video as MediaTrackConstraints).facingMode
+          const facingOptions =
+            facingConstraint &&
+            typeof facingConstraint === 'object' &&
+            !Array.isArray(facingConstraint)
+              ? facingConstraint
+              : undefined
+          const requested =
+            typeof facingConstraint === 'string'
+              ? facingConstraint
+              : Array.isArray(facingConstraint)
+                ? facingConstraint[0]
+                : Array.isArray(facingOptions?.exact)
+                  ? facingOptions.exact[0]
+                  : (facingOptions?.exact ??
+                    (Array.isArray(facingOptions?.ideal)
+                      ? facingOptions.ideal[0]
+                      : facingOptions?.ideal))
+          const facing = requested === 'environment' ? 'environment' : 'user'
+          testState.facings.push(facing)
           if (testState.denyNext) {
             testState.denyNext = false
             throw new DOMException('Denied for test', 'NotAllowedError')
           }
-          return stream
+          if (testState.unavailableFacing === facing) {
+            throw new DOMException('Camera unavailable for test', 'OverconstrainedError')
+          }
+          const track = { stop: () => testState.stoppedTracks++ }
+          return { getTracks: () => [track] }
         },
       },
     })
@@ -57,11 +86,13 @@ export async function installMediaMock(page: Page, options: { denyFirst?: boolea
 
 declare global {
   interface Window {
-    __hairCheckerTest: {
+    __behindYouTest: {
       requests: number
       stoppedTracks: number
       recordings: number
       denyNext: boolean
+      unavailableFacing: 'user' | 'environment' | null
+      facings: Array<'user' | 'environment'>
     }
   }
 }

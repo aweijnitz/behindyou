@@ -57,6 +57,15 @@ describe('browser media capture', () => {
         frameRate: { ideal: 30, max: 30 },
       },
     })
+    expect(cameraConstraints('environment', true)).toEqual({
+      audio: false,
+      video: {
+        facingMode: { exact: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30, max: 30 },
+      },
+    })
   })
 
   it('selects the first supported MIME type and permits a browser default', () => {
@@ -75,7 +84,7 @@ describe('browser media capture', () => {
       FakeMediaRecorder as unknown as typeof MediaRecorder,
       () => now,
     )
-    const opened = await capture.openCamera()
+    const opened = await capture.openCamera('user')
     expect(opened).toBe(stream)
     expect(getUserMedia).toHaveBeenCalledWith(cameraConstraints())
 
@@ -101,7 +110,7 @@ describe('browser media capture', () => {
       { getUserMedia } as unknown as MediaDevices,
       FakeMediaRecorder as unknown as typeof MediaRecorder,
     )
-    const opened = await capture.openCamera()
+    const opened = await capture.openCamera('user')
     capture.start(opened)
     expect(() => capture.start(opened)).toThrowError(DOMException)
     capture.dispose()
@@ -147,7 +156,7 @@ describe('browser media capture', () => {
       FakeMediaRecorder as unknown as typeof MediaRecorder,
       () => 10,
     )
-    const opened = await capture.openCamera()
+    const opened = await capture.openCamera('user')
     capture.start(opened)
     const result = await capture.stop()
     expect(result.mimeType).toBe('video/mp4')
@@ -159,8 +168,8 @@ describe('browser media capture', () => {
       { getUserMedia } as unknown as MediaDevices,
       FakeMediaRecorder as unknown as typeof MediaRecorder,
     )
-    await capture.openCamera()
-    await capture.openCamera()
+    await capture.openCamera('user')
+    await capture.openCamera('environment', true)
     expect(stopTrack).toHaveBeenCalledOnce()
   })
 })

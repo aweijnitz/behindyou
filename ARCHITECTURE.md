@@ -1,8 +1,8 @@
-# Hair Checker Architecture
+# Behind You Architecture
 
 ## Overview
 
-Hair Checker is a static Vue single-page PWA. There is no application server or database. Vue coordinates a browser-media adapter, an in-memory recording session, and a full-screen mobile interface. A service worker precaches only versioned application assets.
+Behind You is a static Vue single-page PWA. There is no application server or database. Vue coordinates a browser-media adapter, an in-memory recording session, and a full-screen mobile interface. A service worker precaches only versioned application assets.
 
 The architecture favors widely supported browser APIs: `getUserMedia`, `MediaRecorder`, `Blob`, object URLs, HTML video, the Page Visibility API, service workers, and the Web App Manifest.
 
@@ -10,13 +10,13 @@ The architecture favors widely supported browser APIs: `getUserMedia`, `MediaRec
 
 ```mermaid
 C4Context
-  title Hair Checker — System Context
-  Person(user, "Hair Checker user", "Records and reviews one temporary hair-check video")
-  System(hairChecker, "Hair Checker PWA", "Captures and reviews video locally in browser memory")
+  title Behind You — System Context
+  Person(user, "Behind You user", "Records and reviews one temporary hair-check video")
+  System(behindYou, "Behind You PWA", "Captures and reviews video locally in browser memory")
   System_Ext(githubPages, "GitHub Pages", "Serves versioned static app assets over HTTPS")
 
-  Rel(user, hairChecker, "Uses on iPhone Safari or Android Chrome")
-  Rel(hairChecker, githubPages, "Downloads app shell on first load and updates", "HTTPS GET")
+  Rel(user, behindYou, "Uses on iPhone Safari or Android Chrome")
+  Rel(behindYou, githubPages, "Downloads app shell on first load and updates", "HTTPS GET")
 ```
 
 The recording has no relationship to GitHub Pages: it never crosses the browser boundary.
@@ -25,7 +25,7 @@ The recording has no relationship to GitHub Pages: it never crosses the browser 
 
 ```mermaid
 C4Container
-  title Hair Checker — Containers
+  title Behind You — Containers
   Person(user, "User")
   System_Boundary(pwa, "Installed/browser PWA") {
     Container(ui, "Vue UI", "Vue 3 + shadcn-vue", "Privacy intro, camera view, controls, and review")
@@ -49,12 +49,12 @@ C4Container
 
 ```mermaid
 C4Component
-  title Hair Checker — Vue Application Components
+  title Behind You — Vue Application Components
   Container_Boundary(app, "Vue application") {
     Component(appView, "App View", "App.vue", "Renders the state-specific mobile interface")
     Component(button, "Button", "shadcn-vue convention", "Accessible primary and destructive actions")
     Component(slider, "Slider", "shadcn-vue / Reka UI", "Touch and keyboard video seeking")
-    Component(composable, "Hair Recorder", "useHairRecorder", "Session state machine and resource ownership")
+    Component(composable, "Behind You Recorder", "useBehindYouRecorder", "Session state machine, camera preference, and resource ownership")
     Component(adapter, "Browser Media Capture", "MediaCapturePort", "Feature detection and MediaRecorder events")
     Component(lifecycle, "Lifecycle Cleanup", "visibilitychange + pagehide", "Disposes media when hidden or closed")
   }
@@ -73,8 +73,12 @@ stateDiagram-v2
   [*] --> intro
   intro --> requesting_permission: Open/start camera
   requesting_permission --> live: Camera stream ready
+  requesting_permission --> live: Preferred camera unavailable; selfie restored
   requesting_permission --> error: Permission/device failure
   live --> recording: Start
+  live --> switching_camera: Switch front/rear
+  switching_camera --> live: Requested or previous camera ready
+  switching_camera --> error: Request and restoration fail
   recording --> finalizing: Stop or 60-second timeout
   finalizing --> review: Blob and object URL ready
   finalizing --> error: Encoding failure
@@ -93,6 +97,11 @@ sequenceDiagram
   participant Session as Hair Recorder
   participant Media as Browser Media APIs
   participant RAM as Transient memory
+
+  User->>UI: Switch front/rear camera
+  UI->>Session: switchCamera()
+  Session->>Media: Stop tracks and getUserMedia(facingMode)
+  Media-->>Session: Replacement MediaStream
 
   User->>UI: Tap record
   UI->>Session: startRecording()
@@ -113,7 +122,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  Camera[Front camera frames] --> Stream[MediaStream in RAM]
+  Camera[Front or rear camera frames] --> Stream[MediaStream in RAM]
   Stream --> Recorder[MediaRecorder]
   Recorder --> Blob[One temporary Blob]
   Blob --> Video[Local object URL and video element]
@@ -128,11 +137,13 @@ flowchart LR
   Blob -. never .-> Network[Network]
 ```
 
-Only the `hair-checker:privacy-intro-seen:v1=true` preference persists. No timestamp, identity, device value, usage count, frame, thumbnail, audio, or video is stored.
+Only `behind-you:privacy-intro-seen:v1=true` and `behind-you:camera-facing:v1=user|environment` persist. No timestamp, identity, device ID, usage count, frame, thumbnail, audio, or video is stored. A legacy privacy preference is migrated once and its obsolete key is removed.
 
 ## Compatibility and failure handling
 
 - Camera access is available only on HTTPS or localhost and always remains subject to browser permission.
+- The default selfie request uses an ideal `facingMode`; explicit switching uses an exact front/rear constraint so the browser cannot silently return the wrong lens.
+- If an exact lens is unavailable, the adapter reopens the previous working camera. Front footage is mirrored in the UI and rear footage retains its natural orientation.
 - Media MIME types are selected with `MediaRecorder.isTypeSupported`, preferring MP4/H.264 and falling back to WebM/VP8 or the browser default.
 - The same browser records and plays a take, avoiding cross-device codec transfer concerns.
 - Recorder time slices are not used as a clock. A monotonic timer controls the 60-second maximum.

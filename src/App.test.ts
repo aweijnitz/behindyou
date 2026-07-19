@@ -46,15 +46,21 @@ describe('App', () => {
     const wrapper = mount(App, { attachTo: document.body })
     await wrapper.get('[data-testid="accept-privacy"]').trigger('click')
     await flushPromises()
-    expect(wrapper.get('[aria-label="Mirrored live camera preview"]').classes()).toContain(
-      'mirrored',
-    )
+    const liveVideo = wrapper.get('[aria-label="Live camera preview"]')
+    expect(liveVideo.classes()).toContain('mirrored')
+    expect(wrapper.get('[aria-label="Switch to rear camera"]').exists()).toBe(true)
+    await wrapper.get('[data-testid="switch-camera"]').trigger('click')
+    await flushPromises()
+    expect(liveVideo.classes()).not.toContain('mirrored')
+    expect(wrapper.get('[aria-label="Switch to front camera"]').exists()).toBe(true)
     await wrapper.get('[data-testid="record-button"]').trigger('click')
     expect(wrapper.text()).toContain('Turn slowly')
+    expect(wrapper.find('[data-testid="switch-camera"]').exists()).toBe(false)
     await wrapper.get('[data-testid="stop-button"]').trigger('click')
     await flushPromises()
-    const video = wrapper.get<HTMLVideoElement>('[aria-label="Mirrored recorded hair check"]')
+    const video = wrapper.get<HTMLVideoElement>('[aria-label="Recorded hair check"]')
     expect(video.attributes('src')).toBe('blob:app-take')
+    expect(video.classes()).not.toContain('mirrored')
     Object.defineProperty(video.element, 'duration', { configurable: true, value: 4 })
     Object.defineProperty(video.element, 'currentTime', {
       configurable: true,
@@ -75,7 +81,7 @@ describe('App', () => {
   })
 
   it('skips the privacy explanation after it has already been accepted', async () => {
-    localStorage.setItem('hair-checker:privacy-intro-seen:v1', 'true')
+    localStorage.setItem('behind-you:privacy-intro-seen:v1', 'true')
     const wrapper = mount(App)
     await flushPromises()
     expect(wrapper.get('[data-testid="record-button"]').exists()).toBe(true)

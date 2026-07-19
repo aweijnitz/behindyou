@@ -1,6 +1,6 @@
-# Hair Checker
+# Behind You
 
-Hair Checker is a private, offline-first progressive web app for recording one short selfie-camera video, checking the sides and back of your hair, and immediately discarding the take.
+Behind You is a private, offline-first progressive web app for recording one short front- or rear-camera video, checking the sides and back of your hair, and immediately discarding the take.
 
 The recording is silent and exists only as an in-memory browser `Blob`. The app has no backend, account, analytics, upload, download, or sharing feature.
 
@@ -41,12 +41,15 @@ npm test
 
 ## How to use it
 
-1. Open Hair Checker and tap **Open camera** on first use.
+1. Open Behind You and tap **Open camera** on first use.
 2. Frame your head in the mirrored front-camera view.
-3. Tap the large red record button and slowly turn from side to side.
-4. Tap stop, or let the app stop automatically at 60 seconds.
-5. Play the take or drag the timeline backward and forward.
-6. Tap **Delete** to discard it immediately, or **New take** to discard it and record again.
+3. Optionally tap the camera-switch button to use the rear camera. Front footage is mirrored; rear footage is shown in its natural orientation.
+4. Tap the large red record button and slowly turn from side to side. Camera switching is hidden while recording.
+5. Tap stop, or let the app stop automatically at 60 seconds.
+6. Play the take or drag the timeline backward and forward.
+7. Tap **Delete** to discard it immediately, or **New take** to discard it and record again with the last selected camera.
+
+The front/rear preference is remembered across launches. If the selected camera is unavailable, the app returns to the working camera and explains what happened.
 
 Leaving or backgrounding the app stops the camera and disposes of the current take. Returning requires a tap before the camera restarts.
 
@@ -88,7 +91,7 @@ The PWA plugin is intentionally disabled during `vite` development. This avoids 
 
 The first visit must be online so the application shell can be cached.
 
-- **iPhone:** open the deployed site in Safari, use **Share → Add to Home Screen**, then launch the new Hair Check icon.
+- **iPhone:** open the deployed site in Safari, use **Share → Add to Home Screen**, then launch the new Behind You icon.
 - **Android:** open the site in Chrome and choose **Install app** or **Add to Home screen** from Chrome’s menu/install prompt.
 
 After the first successful load, close the page, enable airplane mode, and relaunch the installed app to verify offline operation.
@@ -104,16 +107,17 @@ The workflow in `.github/workflows/ci-pages.yml` verifies and deploys the site a
 
 The deployment workflow sets `VITE_BASE_PATH=/behindyou/` for the Vite, manifest, start URL, scope, and service-worker base path. If the repository is renamed, update that workflow value before deploying.
 
-GitHub Pages provides HTTPS. It may process normal web-hosting request metadata under GitHub’s own policies; the Hair Checker application does not collect or transmit personal or usage data.
+GitHub Pages provides HTTPS. It may process normal web-hosting request metadata under GitHub’s own policies; the Behind You application does not collect or transmit personal or usage data.
 
 ## Updating the app
 
-Updates are downloaded as static application assets. The service worker uses a prompt/waiting lifecycle so a newly downloaded version cannot take over in the middle of an active recording. Close all Hair Checker windows and launch it again to activate a waiting update.
+Updates are downloaded as static application assets. The service worker uses a prompt/waiting lifecycle so a newly downloaded version cannot take over in the middle of an active recording. Close all Behind You windows and launch it again to activate a waiting update.
 
 ## Troubleshooting
 
 - **Camera permission denied:** allow camera access for the site in Safari/Chrome settings and tap **Try again**.
 - **Camera busy:** close camera, video-call, or social apps that may be using it.
+- **Camera will not switch:** the requested lens may not be exposed by the browser; Behind You restores the previous working camera and keeps the recording controls available.
 - **No install option:** confirm the site is deployed over HTTPS and the manifest/service worker load without errors.
 - **Offline launch fails:** reconnect once, load the app fully, close it, and retry offline.
 - **Review does not play:** update Safari/Chrome. Media format selection is feature-detected for the recording browser.

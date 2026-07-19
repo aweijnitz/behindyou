@@ -24,8 +24,8 @@ export default defineConfig({
       includeAssets: ['icons/apple-touch-icon.png'],
       manifest: {
         id: productionBase,
-        name: 'Hair Checker',
-        short_name: 'Hair Check',
+        name: 'Behind You',
+        short_name: 'Behind You',
         description: 'Check your hair with a private, temporary video that stays on your device.',
         theme_color: '#000000',
         background_color: '#000000',

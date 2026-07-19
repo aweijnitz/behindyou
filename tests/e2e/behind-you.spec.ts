@@ -9,10 +9,12 @@ test('records, reviews, scrubs, and deletes a temporary take', async ({ page }) 
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /check your hair/i })).toBeVisible()
   await page.getByTestId('accept-privacy').click()
-  await expect(page.getByLabel('Mirrored live camera preview')).toBeVisible()
+  await expect(page.getByLabel('Live camera preview')).toBeVisible()
+  await expect(page.getByLabel('Live camera preview')).toHaveClass(/mirrored/)
 
   await page.getByTestId('record-button').click()
   await expect(page.getByText(/turn slowly/i)).toBeVisible()
+  await expect(page.getByTestId('switch-camera')).toHaveCount(0)
   await page.waitForTimeout(150)
   await page.getByTestId('stop-button').click()
 
@@ -23,7 +25,7 @@ test('records, reviews, scrubs, and deletes a temporary take', async ({ page }) 
   await page.getByTestId('delete-take').click()
 
   await expect(page.getByRole('heading', { name: /ready for another check/i })).toBeVisible()
-  const state = await page.evaluate(() => window.__hairCheckerTest)
+  const state = await page.evaluate(() => window.__behindYouTest)
   expect(state.requests).toBe(1)
   expect(state.recordings).toBe(1)
   expect(state.stoppedTracks).toBeGreaterThan(0)
@@ -39,7 +41,7 @@ test('starting a new take destroys the previous one and reacquires the camera', 
   await expect(page.getByTestId('new-take')).toBeVisible()
   await page.getByTestId('new-take').click()
   await expect(page.getByTestId('record-button')).toBeVisible()
-  expect(await page.evaluate(() => window.__hairCheckerTest.requests)).toBe(2)
+  expect(await page.evaluate(() => window.__behindYouTest.requests)).toBe(2)
 })
 
 test('cleans up transient media when the page is closed or backgrounded', async ({ page }) => {
@@ -50,7 +52,7 @@ test('cleans up transient media when the page is closed or backgrounded', async 
     window.dispatchEvent(new PageTransitionEvent('pagehide'))
   })
   await expect(page.getByTestId('resume-camera')).toBeVisible()
-  expect(await page.evaluate(() => window.__hairCheckerTest.stoppedTracks)).toBeGreaterThan(0)
+  expect(await page.evaluate(() => window.__behindYouTest.stoppedTracks)).toBeGreaterThan(0)
 })
 
 test('sends no video or third-party network request', async ({ page }) => {
@@ -69,11 +71,53 @@ test('sends no video or third-party network request', async ({ page }) => {
   )
 })
 
+test('switches cameras, preserves orientation in review, and persists the preference', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.getByTestId('accept-privacy').click()
+  const liveVideo = page.getByLabel('Live camera preview')
+  await expect(liveVideo).toHaveClass(/mirrored/)
+  await page.getByTestId('switch-camera').click()
+  await expect(page.getByLabel('Switch to front camera')).toBeVisible()
+  await expect(liveVideo).not.toHaveClass(/mirrored/)
+  expect(await page.evaluate(() => window.__behindYouTest.facings)).toEqual(['user', 'environment'])
+
+  await page.getByTestId('record-button').click()
+  await page.getByTestId('stop-button').click()
+  await expect(page.getByLabel('Recorded hair check')).not.toHaveClass(/mirrored/)
+  await page.getByTestId('new-take').click()
+  await expect(page.getByLabel('Switch to front camera')).toBeVisible()
+  expect(await page.evaluate(() => window.__behindYouTest.facings.at(-1))).toBe('environment')
+
+  await page.reload()
+  await expect(page.getByTestId('record-button')).toBeVisible()
+  await expect(page.getByLabel('Switch to front camera')).toBeVisible()
+  expect(await page.evaluate(() => window.__behindYouTest.facings.at(-1))).toBe('environment')
+})
+
+test('restores the front camera when the rear camera is unavailable', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('accept-privacy').click()
+  await page.evaluate(() => {
+    window.__behindYouTest.unavailableFacing = 'environment'
+  })
+  await page.getByTestId('switch-camera').click()
+  await expect(page.getByText(/rear camera isn’t available/i)).toBeVisible()
+  await expect(page.getByLabel('Switch to rear camera')).toBeVisible()
+  await expect(page.getByLabel('Live camera preview')).toHaveClass(/mirrored/)
+  expect(await page.evaluate(() => window.__behindYouTest.facings)).toEqual([
+    'user',
+    'environment',
+    'user',
+  ])
+})
+
 test('shows a useful permission error and retries', async ({ page }) => {
   await page.evaluate(() => localStorage.clear()).catch(() => {})
   await page.goto('/')
   await page.evaluate(() => {
-    window.__hairCheckerTest.denyNext = true
+    window.__behindYouTest.denyNext = true
   })
   await page.getByTestId('accept-privacy').click()
   await expect(page.getByText(/camera access is off/i)).toBeVisible()
@@ -99,7 +143,7 @@ test('manifest is installable and the cached shell reloads offline', async ({
     async (href) => fetch(href!).then((response) => response.json()),
     manifestHref,
   )) as { name: string; display: string }
-  expect(manifest.name).toBe('Hair Checker')
+  expect(manifest.name).toBe('Behind You')
   expect(manifest.display).toBe('standalone')
 
   await context.setOffline(true)

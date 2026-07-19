@@ -1,17 +1,19 @@
 import { defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { HairRecorderOptions } from './useHairRecorder'
+import type { BehindYouRecorderOptions } from './useBehindYouRecorder'
 import {
+  CAMERA_FACING_STORAGE_KEY,
   classifyCameraError,
   formatDuration,
   INTRO_STORAGE_KEY,
+  LEGACY_INTRO_STORAGE_KEY,
   MAX_RECORDING_MS,
-  useHairRecorder,
-} from './useHairRecorder'
+  useBehindYouRecorder,
+} from './useBehindYouRecorder'
 import type { MediaCapturePort } from '@/domain/media'
 
-function makeHarness(overrides: Partial<HairRecorderOptions> = {}) {
+function makeHarness(overrides: Partial<BehindYouRecorderOptions> = {}) {
   const stopTrack = vi.fn()
   const stream = { getTracks: () => [{ stop: stopTrack }] } as unknown as MediaStream
   const port: MediaCapturePort = {
@@ -28,13 +30,14 @@ function makeHarness(overrides: Partial<HairRecorderOptions> = {}) {
   const storage = {
     getItem: vi.fn((key: string) => values.get(key) ?? null),
     setItem: vi.fn((key: string, value: string) => values.set(key, value)),
+    removeItem: vi.fn((key: string) => values.delete(key)),
   }
   const url = { createObjectURL: vi.fn(() => 'blob:take'), revokeObjectURL: vi.fn() }
-  let hook!: ReturnType<typeof useHairRecorder>
+  let hook!: ReturnType<typeof useBehindYouRecorder>
   const wrapper = mount(
     defineComponent({
       setup() {
-        hook = useHairRecorder({ createCapture: () => port, storage, url, ...overrides })
+        hook = useBehindYouRecorder({ createCapture: () => port, storage, url, ...overrides })
         return () => null
       },
     }),
@@ -42,7 +45,7 @@ function makeHarness(overrides: Partial<HairRecorderOptions> = {}) {
   return { hook, wrapper, port, stream, stopTrack, storage, values, url }
 }
 
-describe('useHairRecorder', () => {
+describe('useBehindYouRecorder', () => {
   beforeEach(() => {
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
   })
@@ -99,6 +102,74 @@ describe('useHairRecorder', () => {
     expect(hook.state.value).toBe('live')
   })
 
+  it('switches cameras, persists the selection, and records its orientation', async () => {
+    const { hook, port, storage } = makeHarness()
+    await hook.acceptPrivacy()
+    await hook.switchCamera()
+    expect(port.openCamera).toHaveBeenLastCalledWith('environment', true)
+    expect(hook.cameraFacing.value).toBe('environment')
+    expect(storage.setItem).toHaveBeenCalledWith(CAMERA_FACING_STORAGE_KEY, 'environment')
+    hook.startRecording()
+    await hook.stopRecording()
+    expect(hook.take.value?.cameraFacing).toBe('environment')
+  })
+
+  it('restores the working camera and shows a temporary notice when switching is unavailable', async () => {
+    vi.useFakeTimers()
+    const { hook, port, stream } = makeHarness()
+    vi.mocked(port.openCamera)
+      .mockResolvedValueOnce(stream)
+      .mockRejectedValueOnce(new DOMException('missing', 'OverconstrainedError'))
+      .mockResolvedValueOnce(stream)
+    await hook.acceptPrivacy()
+    await hook.switchCamera()
+    expect(port.openCamera).toHaveBeenLastCalledWith('user')
+    expect(hook.state.value).toBe('live')
+    expect(hook.cameraFacing.value).toBe('user')
+    expect(hook.cameraNotice.value).toContain('Rear camera isn’t available')
+    await vi.runAllTimersAsync()
+    expect(hook.cameraNotice.value).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('falls back from an unavailable persisted rear camera and updates the preference', async () => {
+    const values = new Map([[CAMERA_FACING_STORAGE_KEY, 'environment']])
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    }
+    const { hook, port, stream } = makeHarness({ storage })
+    vi.mocked(port.openCamera)
+      .mockRejectedValueOnce(new DOMException('missing', 'NotFoundError'))
+      .mockResolvedValueOnce(stream)
+    await hook.beginCamera()
+    expect(port.openCamera).toHaveBeenNthCalledWith(1, 'environment', true)
+    expect(port.openCamera).toHaveBeenNthCalledWith(2, 'user')
+    expect(hook.cameraFacing.value).toBe('user')
+    expect(values.get(CAMERA_FACING_STORAGE_KEY)).toBe('user')
+  })
+
+  it('uses the full error state for switch failures that cannot be restored', async () => {
+    const denied = makeHarness()
+    await denied.hook.acceptPrivacy()
+    vi.mocked(denied.port.openCamera).mockRejectedValueOnce(
+      new DOMException('denied', 'NotAllowedError'),
+    )
+    await denied.hook.switchCamera()
+    expect(denied.hook.state.value).toBe('error')
+    expect(denied.hook.error.value?.kind).toBe('permission-denied')
+
+    const unavailable = makeHarness()
+    await unavailable.hook.acceptPrivacy()
+    vi.mocked(unavailable.port.openCamera)
+      .mockRejectedValueOnce(new DOMException('missing', 'OverconstrainedError'))
+      .mockRejectedValueOnce(new DOMException('busy', 'NotReadableError'))
+    await unavailable.hook.switchCamera()
+    expect(unavailable.hook.state.value).toBe('error')
+    expect(unavailable.hook.error.value?.kind).toBe('camera-busy')
+  })
+
   it('cleans all transient media when hidden and on unmount', async () => {
     const { hook, wrapper, port, stopTrack } = makeHarness()
     await hook.acceptPrivacy()
@@ -122,6 +193,16 @@ describe('useHairRecorder', () => {
     await opening
     expect(stopTrack).toHaveBeenCalled()
     expect(hook.liveStream.value).toBeNull()
+
+    let rejectCamera!: (error: unknown) => void
+    const rejectedCamera = new Promise<MediaStream>((_resolve, reject) => (rejectCamera = reject))
+    const stale = makeHarness()
+    vi.mocked(stale.port.openCamera).mockReturnValue(rejectedCamera)
+    const rejectedOpening = stale.hook.beginCamera()
+    stale.hook.cleanupSession()
+    rejectCamera(new DOMException('gone', 'NotFoundError'))
+    await rejectedOpening
+    expect(stale.hook.state.value).toBe('intro')
   })
 
   it('surfaces open, start, and finalization failures', async () => {
@@ -151,6 +232,9 @@ describe('useHairRecorder', () => {
     expect(classifyCameraError(new DOMException('', 'NotFoundError')).kind).toBe(
       'camera-unavailable',
     )
+    expect(classifyCameraError(new DOMException('', 'OverconstrainedError')).kind).toBe(
+      'camera-unavailable',
+    )
     expect(classifyCameraError(new DOMException('', 'NotReadableError')).kind).toBe('camera-busy')
     expect(classifyCameraError(new DOMException('', 'InsecureContextError')).kind).toBe(
       'insecure-context',
@@ -175,14 +259,30 @@ describe('useHairRecorder', () => {
     wrapper.unmount()
   })
 
-  it('recognizes an accepted intro preference', () => {
-    const values = new Map([[INTRO_STORAGE_KEY, 'true']])
+  it('recognizes the accepted intro preference and migrates its legacy key', () => {
+    const values = new Map([[LEGACY_INTRO_STORAGE_KEY, 'true']])
     const { hook } = makeHarness({
       storage: {
         getItem: (key) => values.get(key) ?? null,
         setItem: (key, value) => values.set(key, value),
+        removeItem: (key) => values.delete(key),
       },
     })
     expect(hook.privacyAccepted.value).toBe(true)
+    expect(values.get(INTRO_STORAGE_KEY)).toBe('true')
+    expect(values.has(LEGACY_INTRO_STORAGE_KEY)).toBe(false)
+  })
+
+  it('removes an invalid persisted camera preference and defaults to selfie', () => {
+    const values = new Map([[CAMERA_FACING_STORAGE_KEY, 'sideways']])
+    const { hook } = makeHarness({
+      storage: {
+        getItem: (key) => values.get(key) ?? null,
+        setItem: (key, value) => values.set(key, value),
+        removeItem: (key) => values.delete(key),
+      },
+    })
+    expect(hook.cameraFacing.value).toBe('user')
+    expect(values.has(CAMERA_FACING_STORAGE_KEY)).toBe(false)
   })
 })

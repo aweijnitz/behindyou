@@ -1,4 +1,4 @@
-import type { CapturedMedia, MediaCapturePort } from '@/domain/media'
+import type { CameraFacing, CapturedMedia, MediaCapturePort } from '@/domain/media'
 
 export const MIME_TYPE_CANDIDATES = [
   'video/mp4;codecs=avc1.42E01E',
@@ -11,11 +11,14 @@ export function selectSupportedMimeType(MediaRecorderCtor: typeof MediaRecorder)
   return MIME_TYPE_CANDIDATES.find((mimeType) => MediaRecorderCtor.isTypeSupported(mimeType)) ?? ''
 }
 
-export function cameraConstraints(): MediaStreamConstraints {
+export function cameraConstraints(
+  facing: CameraFacing = 'user',
+  strict = false,
+): MediaStreamConstraints {
   return {
     audio: false,
     video: {
-      facingMode: { ideal: 'user' },
+      facingMode: strict ? { exact: facing } : { ideal: facing },
       width: { ideal: 1280 },
       height: { ideal: 720 },
       frameRate: { ideal: 30, max: 30 },
@@ -42,12 +45,12 @@ export class BrowserMediaCapture implements MediaCapturePort {
     this.now = now
   }
 
-  async openCamera(): Promise<MediaStream> {
+  async openCamera(facing: CameraFacing, strict = false): Promise<MediaStream> {
     if (!this.mediaDevices?.getUserMedia || !this.MediaRecorderCtor) {
       throw new DOMException('Camera recording is not supported.', 'NotSupportedError')
     }
     this.stopTracks()
-    this.stream = await this.mediaDevices.getUserMedia(cameraConstraints())
+    this.stream = await this.mediaDevices.getUserMedia(cameraConstraints(facing, strict))
     return this.stream
   }
 

@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { Camera, CircleAlert, Pause, Play, RotateCcw, ShieldCheck, Trash2 } from '@lucide/vue'
+import {
+  Camera,
+  CircleAlert,
+  Pause,
+  Play,
+  RotateCcw,
+  ShieldCheck,
+  SwitchCamera,
+  Trash2,
+} from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
-import { formatDuration, useHairRecorder } from '@/composables/useHairRecorder'
+import { formatDuration, useBehindYouRecorder } from '@/composables/useBehindYouRecorder'
 
-const recorder = useHairRecorder()
+const recorder = useBehindYouRecorder()
 const liveVideo = ref<HTMLVideoElement | null>(null)
 const reviewVideo = ref<HTMLVideoElement | null>(null)
 const currentTime = ref(0)
@@ -129,51 +138,77 @@ function deleteCurrentTake() {
     </section>
 
     <section
-      v-else-if="['live', 'recording'].includes(recorder.state.value)"
+      v-else-if="['live', 'recording', 'switching-camera'].includes(recorder.state.value)"
       class="camera-stage"
-      aria-label="Live front camera"
+      aria-label="Live camera"
     >
       <video
         ref="liveVideo"
-        class="camera-video mirrored"
+        :class="['camera-video', { mirrored: recorder.cameraFacing.value === 'user' }]"
         autoplay
         muted
         playsinline
-        aria-label="Mirrored live camera preview"
+        aria-label="Live camera preview"
       />
       <div class="camera-vignette" aria-hidden="true" />
       <div class="top-status" aria-live="polite">
-        <span v-if="recorder.state.value === 'recording'" class="recording-pill">
+        <span v-if="recorder.cameraNotice.value" class="privacy-pill" role="status">
+          {{ recorder.cameraNotice.value }}
+        </span>
+        <span v-else-if="recorder.state.value === 'recording'" class="recording-pill">
           <span class="recording-dot" /> REC {{ recorder.formattedElapsed.value }} / 1:00
         </span>
         <span v-else class="privacy-pill"><ShieldCheck :size="15" /> Stays on this device</span>
+      </div>
+      <div v-if="recorder.state.value === 'switching-camera'" class="switching-overlay">
+        <div class="spinner" aria-hidden="true" />
+        <p role="status">Switching camera…</p>
       </div>
       <div class="record-controls">
         <p class="record-hint">
           {{
             recorder.state.value === 'recording'
               ? 'Turn slowly from side to side'
-              : 'Frame your head, then tap record'
+              : recorder.state.value === 'switching-camera'
+                ? 'Getting the other camera ready'
+                : 'Frame your head, then tap record'
           }}
         </p>
-        <button
-          v-if="recorder.state.value === 'live'"
-          class="record-button"
-          aria-label="Start recording"
-          data-testid="record-button"
-          @click="recorder.startRecording"
-        >
-          <span />
-        </button>
-        <button
-          v-else
-          class="record-button recording"
-          aria-label="Stop recording"
-          data-testid="stop-button"
-          @click="recorder.stopRecording"
-        >
-          <span />
-        </button>
+        <div v-if="recorder.state.value !== 'switching-camera'" class="capture-control-row">
+          <button
+            v-if="recorder.state.value === 'live'"
+            class="record-button"
+            aria-label="Start recording"
+            data-testid="record-button"
+            @click="recorder.startRecording"
+          >
+            <span />
+          </button>
+          <button
+            v-else
+            class="record-button recording"
+            aria-label="Stop recording"
+            data-testid="stop-button"
+            @click="recorder.stopRecording"
+          >
+            <span />
+          </button>
+          <Button
+            v-if="recorder.state.value === 'live'"
+            variant="secondary"
+            size="icon"
+            class="camera-switch-button"
+            :aria-label="
+              recorder.cameraFacing.value === 'user'
+                ? 'Switch to rear camera'
+                : 'Switch to front camera'
+            "
+            data-testid="switch-camera"
+            @click="recorder.switchCamera"
+          >
+            <SwitchCamera :size="24" />
+          </Button>
+        </div>
       </div>
     </section>
 
@@ -194,10 +229,10 @@ function deleteCurrentTake() {
       <video
         ref="reviewVideo"
         :src="recorder.take.value.objectUrl"
-        class="camera-video mirrored"
+        :class="['camera-video', { mirrored: recorder.take.value.cameraFacing === 'user' }]"
         playsinline
         preload="metadata"
-        aria-label="Mirrored recorded hair check"
+        aria-label="Recorded hair check"
         @loadedmetadata="updateMetadata"
         @durationchange="updateMetadata"
         @timeupdate="updatePlaybackTime"

@@ -1,5 +1,14 @@
 export type CaptureState =
-  'intro' | 'requesting-permission' | 'live' | 'recording' | 'finalizing' | 'review' | 'error'
+  | 'intro'
+  | 'requesting-permission'
+  | 'switching-camera'
+  | 'live'
+  | 'recording'
+  | 'finalizing'
+  | 'review'
+  | 'error'
+
+export type CameraFacing = 'user' | 'environment'
 
 export type CameraErrorKind =
   | 'permission-denied'
@@ -20,6 +29,7 @@ export interface RecordedTake {
   objectUrl: string
   mimeType: string
   durationMs: number
+  cameraFacing: CameraFacing
 }
 
 export interface CapturedMedia {
@@ -29,7 +39,7 @@ export interface CapturedMedia {
 }
 
 export interface MediaCapturePort {
-  openCamera(): Promise<MediaStream>
+  openCamera(facing: CameraFacing, strict?: boolean): Promise<MediaStream>
   start(stream: MediaStream): void
   stop(): Promise<CapturedMedia>
   dispose(): void
