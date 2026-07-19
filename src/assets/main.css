@@ -1,0 +1,326 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background: #000;
+  color: #fff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  background: #000;
+  overscroll-behavior: none;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  position: relative;
+  width: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 20%, rgb(38 38 38 / 55%), transparent 38%), #000;
+}
+
+.center-panel {
+  display: flex;
+  min-height: 100dvh;
+  width: min(100%, 32rem);
+  margin: 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: max(2rem, env(safe-area-inset-top)) 1.5rem max(2rem, env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+.center-panel h1 {
+  max-width: 22rem;
+  margin: 0 0 1rem;
+  font-size: clamp(2rem, 9vw, 3rem);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.intro-icon {
+  display: grid;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-bottom: 1.5rem;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 1.5rem;
+  background: rgb(255 255 255 / 10%);
+  box-shadow: 0 1rem 4rem rgb(0 0 0 / 45%);
+}
+
+.error-icon {
+  color: #fca5a5;
+  background: rgb(220 38 38 / 14%);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: #d4d4d4;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.supporting-copy {
+  max-width: 27rem;
+  margin: 0 0 2rem;
+  color: #c7c7c7;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.camera-stage,
+.review-stage {
+  position: fixed;
+  inset: 0;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #090909;
+}
+
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #090909;
+}
+
+.mirrored {
+  transform: scaleX(-1);
+}
+
+.camera-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 48%),
+    transparent 22%,
+    transparent 55%,
+    rgb(0 0 0 / 78%)
+  );
+}
+
+.top-status {
+  position: absolute;
+  top: max(1rem, env(safe-area-inset-top));
+  left: 0;
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+}
+
+.privacy-pill,
+.recording-pill,
+.review-pill {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 58%);
+  padding: 0.4rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  backdrop-filter: blur(12px);
+}
+
+.recording-pill {
+  background: rgb(127 29 29 / 78%);
+}
+
+.recording-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #fff;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.record-controls {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 1rem max(1.5rem, env(safe-area-inset-bottom));
+}
+
+.record-hint {
+  margin: 0 0 1rem;
+  color: #f5f5f5;
+  font-size: 0.88rem;
+  font-weight: 550;
+  text-shadow: 0 1px 8px #000;
+}
+
+.record-button {
+  display: grid;
+  width: 5.25rem;
+  height: 5.25rem;
+  cursor: pointer;
+  place-items: center;
+  border: 0.28rem solid #fff;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 18%);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 35%),
+    0 0.75rem 2rem rgb(0 0 0 / 38%);
+  transition: transform 160ms ease;
+}
+
+.record-button:active {
+  transform: scale(0.94);
+}
+
+.record-button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+}
+
+.record-button span {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+.record-button.recording span {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.4rem;
+}
+
+.review-controls {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 1.25rem 1rem max(1rem, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgb(0 0 0 / 94%) 55%, transparent);
+}
+
+.timeline-row {
+  display: flex;
+  width: min(100%, 42rem);
+  margin: 0 auto 1rem;
+  align-items: center;
+  gap: 1rem;
+}
+
+.timeline-stack {
+  min-width: 0;
+  flex: 1;
+}
+
+.time-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  color: #d4d4d4;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.review-actions {
+  display: grid;
+  width: min(100%, 42rem);
+  margin: 0 auto;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 0.75rem;
+}
+
+.delete-note {
+  margin: 0.75rem 0 0;
+  color: #a3a3a3;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.spinner {
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 2rem;
+  border: 3px solid rgb(255 255 255 / 20%);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 32rem) {
+  .record-controls {
+    padding-bottom: 0.75rem;
+  }
+  .record-button {
+    width: 4rem;
+    height: 4rem;
+  }
+  .record-button span {
+    width: 3rem;
+    height: 3rem;
+  }
+  .review-controls {
+    padding-top: 0.75rem;
+  }
+}

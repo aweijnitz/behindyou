@@ -1,0 +1,57 @@
+{
+  "name": "hair-checker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host",
+    "dev:https": "VITE_HTTPS_KEY=.cert/key.pem VITE_HTTPS_CERT=.cert/cert.pem vite --host 0.0.0.0",
+    "build": "run-s type-check build-only",
+    "build-only": "vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:unit": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium webkit",
+    "test": "run-s type-check lint test:coverage build-only test:e2e"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "@lucide/vue": "^1.25.0",
+    "reka-ui": "^2.10.1",
+    "tailwind-merge": "^3.3.1",
+    "vue": "^3.5.40"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tsconfig/node22": "^22.0.2",
+    "@types/node": "^24.10.0",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "@vitest/coverage-v8": "^4.1.10",
+    "@vue/eslint-config-typescript": "^14.9.0",
+    "@vue/test-utils": "^2.4.11",
+    "@vue/tsconfig": "^0.8.1",
+    "eslint": "^10.7.0",
+    "eslint-plugin-vue": "^10.9.2",
+    "jsdom": "^29.1.1",
+    "npm-run-all2": "^8.0.4",
+    "prettier": "^3.8.2",
+    "shadcn-vue": "^2.8.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5",
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.10",
+    "vue-tsc": "^3.3.7"
+  }
+}
