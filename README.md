@@ -97,12 +97,12 @@ After the first successful load, close the page, enable airplane mode, and relau
 
 The workflow in `.github/workflows/ci-pages.yml` verifies and deploys the site after pushes to `main`.
 
-1. Push the repository to GitHub using the repository name `hair-checker`.
+1. Push the repository to GitHub using the repository name `behindyou`.
 2. In **Settings → Pages**, select **GitHub Actions** as the source.
 3. Push to `main` or run the workflow manually.
 4. Open the deployment URL reported by the `github-pages` environment.
 
-The deployment workflow sets `VITE_BASE_PATH=/hair-checker/` for the Vite, manifest, start URL, scope, and service-worker base path. If the repository is renamed, update that workflow value before deploying.
+The deployment workflow sets `VITE_BASE_PATH=/behindyou/` for the Vite, manifest, start URL, scope, and service-worker base path. If the repository is renamed, update that workflow value before deploying.
 
 GitHub Pages provides HTTPS. It may process normal web-hosting request metadata under GitHub’s own policies; the Hair Checker application does not collect or transmit personal or usage data.
 

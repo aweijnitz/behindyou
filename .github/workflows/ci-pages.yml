@@ -51,7 +51,7 @@ jobs:
       - run: npm ci
       - run: npm run build-only
         env:
-          VITE_BASE_PATH: /hair-checker/
+          VITE_BASE_PATH: /behindyou/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
