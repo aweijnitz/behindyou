@@ -4,6 +4,10 @@ Behind You is a private, offline-first progressive web app for recording one sho
 
 The recording is silent and exists only as an in-memory browser `Blob`. The app has no backend, account, analytics, upload, download, or sharing feature.
 
+## Try it!
+
+https://aweijnitz.github.io/behindyou
+
 ## Requirements
 
 - Node.js `^20.19.0` or `>=22.12.0`
